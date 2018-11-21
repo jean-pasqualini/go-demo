@@ -3,13 +3,17 @@ package MaisonController
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"go-demo/container"
 	"go-demo/model"
+	"go-demo/request"
 	"gopkg.in/mgo.v2"
-	"io/ioutil"
+)
+
+var (
+	dig = container.Get();
 )
 
 func GetAction(c *gin.Context) {
-
 	maison := model.Maison{
 		Name: "chocapic",
 	}
@@ -19,20 +23,21 @@ func GetAction(c *gin.Context) {
 };
 
 func PostAction(context *gin.Context) {
-	var maison model.Maison
-	session, _ := mgo.Dial("127.0.0.1")
-	defer session.Close()
-	session.SetMode(mgo.Monotonic, true)
-	c := session.DB("test").C("maison")
 
-	requestBody, _ := ioutil.ReadAll(context.Request.Body)
+	// Invoke dependencies
+	var mongoHouseCollection *mgo.Collection
+	dig.Invoke(func(mongo *mgo.Database) {
+		mongoHouseCollection = mongo.C("maison");
+	})
 
-	json.Unmarshal([]byte(requestBody), &maison)
+	var maison model.Maison;
+	var request = http.Request{Request: context.Request};
 
-	content, _ := json.Marshal(maison)
+	json.Unmarshal([]byte(request.GetBodyString()), &maison)
 
-	_ = c.Insert(maison)
+	mongoHouseCollection.Insert(maison)
 
+	var content, _ = json.Marshal(maison)
 	context.String(201, string(content))
 };
 
